@@ -1,0 +1,295 @@
+%%%
+  VERSION:1
+  LANGUAGE:ENGLISH
+%%%
+
+MODULE Module1
+    !Uncommented as programme uses pre-defined parameters within USER system
+    !PERS tooldata tgun:=[TRUE,[[129.774687058,-0.000489462,389.787741907],[0.898849484,0.000001653,0.438257465,0]],[1,[0,0,100],[1,0,0,0],0,0,0]];
+    !PERS wobjdata weld_table0:=[FALSE,TRUE,"",[[1500,-500,340],[0,0,1,0]],[[0,0,0],[1,0,0,0]]];
+
+    !WELDING PARAMETERS
+    PERS weavedata wv1:=[0,0,0,0,0,0,0,0,0,0,0,0];
+    PERS welddata wd1:=[3,5,0]; !welddata:=[weld_speed, weld_voltage, weld_wirefeed, delay_distance]
+    PERS seamdata sm1:=[0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+
+    CONST robtarget HOME:=[[0,0,-300],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    
+    !******************************************************************
+    !
+    !Hello World, this programme is to 3D print string "Steelo".
+    !Characters with targets are 'S', 'T', 'E', '1', '0'.
+    !This programme is to be used only for 3D printing characters with ARC commands.
+    !Author: Immanuel Capistrano, Steelo 29/08/19
+    !
+    !******************************************************************
+    
+    PROC main()
+          VAR num z_offset;
+          VAR num init_array{2};
+          VAR num bounding_box{4};
+          VAR bool sat;
+
+          TPErase; !remove previous logs on teach pendant
+
+          start_again: !start in this line when GOTO start_again is called
+
+          home_pos; !proc to move robot to specified home position
+
+          get_dimensions "Define distance from ref point in x-axis", "Define distance from ref point in y-axis", init_array;
+          bounding_box{1}:=init_array{1};
+          bounding_box{2}:=init_array{2};
+          
+          TPReadNum reg1,"Enter z offset";
+          z_offset:=-reg1; !-value to move robot upwards FROM table
+
+          starting_pos bounding_box, z_offset;
+          sat:=satisfied("Satisfied with starting position?");
+          
+          IF sat=TRUE THEN
+              get_dimensions "Define height of box","Define length of box",init_array;
+              bounding_box{3}:=init_array{1};
+              bounding_box{4}:=init_array{2};
+
+              draw_box bounding_box, z_offset; !show bounding box for first character
+              draw_boxes bounding_box, z_offset, bounding_box{4}*7.5; !show bounding box for all character
+
+              sat:=satisfied("Satisfied with scale?");
+              IF sat=TRUE THEN
+                  GOTO start_weld;
+              ELSE
+                  GOTO start_again;
+              ENDIF
+              
+          ELSE
+              GOTO start_again;
+          ENDIF
+
+          start_weld: !start in this line when GOTO start_weld is called
+
+          home_pos;
+          s_target bounding_box, z_offset, bounding_box{4}*0; !last parameters defines the gap between characters from the starting point
+          home_pos;
+          t_target bounding_box, z_offset, bounding_box{4}*1.5;
+          home_pos;
+          e_target bounding_box, z_offset, bounding_box{4}*3;
+          home_pos;
+          e_target bounding_box, z_offset, bounding_box{4}*4.5;
+          home_pos;
+          one_target bounding_box, z_offset, bounding_box{4}*6;
+          home_pos;
+          zero_target bounding_box, z_offset, bounding_box{4}*7.5;
+          home_pos;
+          Break; !end programme, not needed
+      ENDPROC
+
+    PROC get_dimensions(string one, string two, INOUT num ref_array{*})
+          !getting dimensions for two parameters
+          TPReadNum reg1,one;
+          TPReadNum reg2,two;
+          ref_array:=[reg1,reg2];
+    ENDPROC
+    
+    FUNC bool satisfied(string one)
+        !returns True/False based on user's input on teach pendent
+        TPReadFK reg1,one,stEmpty,stEmpty,stEmpty,"Yes","No";
+        IF reg1=5 THEN
+            RETURN FALSE;
+        ELSE 
+            RETURN TRUE;
+        ENDIF
+    ENDFUNC
+    
+    PROC s_target(num box{*}, num z, num side_off)
+        VAR robtarget T1;
+        VAR robtarget T2;
+        VAR robtarget T3;
+        VAR robtarget T4;
+        VAR robtarget T5;
+        VAR robtarget T6;
+        
+        !x-axis, y-axis, height, length
+        T1:=[[box{1},box{2}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T2:=[[box{1},box{2}+box{4}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T3:=[[box{1}+box{3}/2,box{2}+box{4}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T4:=[[box{1}+box{3}/2,box{2}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T5:=[[box{1}+box{3},box{2}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T6:=[[box{1}+box{3},box{2}+box{4}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+		
+        ArcL\On,T1,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\On,T2,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\On,T3,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\On,T4,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\On,T5,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\Off,T6,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        
+        !MoveJ T1,v300,fine,tgun\WObj:=weld_table0;
+        !MoveL T2,v300,fine,tgun\WObj:=weld_table0;
+        !MoveL T3,v300,fine,tgun\WObj:=weld_table0;
+        !MoveL T4,v300,fine,tgun\WObj:=weld_table0;
+        !MoveL T5,v300,fine,tgun\WObj:=weld_table0;
+        !MoveL T6,v300,fine,tgun\WObj:=weld_table0;
+    ENDPROC
+    
+    PROC t_target(num box{*}, num z, num side_off)
+        VAR robtarget T1;
+        VAR robtarget T2;
+        VAR robtarget T3;
+        VAR robtarget T4;
+        
+        !x-axis, y-axis, height, length
+        T1:=[[box{1},box{2}+box{4}/2+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T2:=[[box{1}+box{3},box{2}+box{4}/2+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T3:=[[box{1}+box{3},box{2}+box{4}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T4:=[[box{1}+box{3},box{2}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+
+        ArcL\On,T1,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\Off,T2,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        home_pos;
+        ArcL\On,T3,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\Off,T4,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+		
+        !MoveJ T1,v300,fine,tgun\WObj:=weld_table0;
+        !MoveL T2,v300,fine,tgun\WObj:=weld_table0;
+        !home_pos;
+        !MoveJ T3,v300,fine,tgun\WObj:=weld_table0;
+        !MoveL T4,v300,fine,tgun\WObj:=weld_table0;
+    ENDPROC
+    
+    PROC e_target(num box{*}, num z, num side_off)
+        VAR robtarget T1;
+        VAR robtarget T2;
+        VAR robtarget T3;
+        VAR robtarget T4;
+        VAR robtarget T5;
+        VAR robtarget T6;
+        
+        !x-axis, y-axis, height, length
+        T1:=[[box{1},box{2}+box{4}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T2:=[[box{1},box{2}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T3:=[[box{1}+box{3},box{2}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T4:=[[box{1}+box{3},box{2}+box{4}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T5:=[[box{1}+box{3}/2,box{2}+box{4}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T6:=[[box{1}+box{3}/2,box{2}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+
+        ArcL\On,T5,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\Off,T6,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        home_pos;
+        ArcL\On,T1,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\On,T2,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\On,T3,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\Off,T4,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+                
+        !MoveJ T1,v300,fine,tgun\WObj:=weld_table0;
+        !MoveL T2,v300,fine,tgun\WObj:=weld_table0;
+        !MoveL T3,v300,fine,tgun\WObj:=weld_table0;
+        !MoveL T4,v300,fine,tgun\WObj:=weld_table0;
+        !home_pos;
+        !MoveJ T5,v300,fine,tgun\WObj:=weld_table0;
+        !MoveL T6,v300,fine,tgun\WObj:=weld_table0;
+    ENDPROC
+    
+    PROC one_target(num box{*}, num z, num side_off)
+        VAR robtarget T1;
+        VAR robtarget T2;
+        VAR robtarget T3;
+        VAR robtarget T4;
+        VAR robtarget T5;
+
+        !x-axis, y-axis, height, length
+        T1:=[[box{1},box{2}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T2:=[[box{1},box{2}+box{4}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T3:=[[box{1},box{2}+box{4}/2+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T4:=[[box{1}+box{3},box{2}+box{4}/2+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T5:=[[box{1}+box{3}/2,box{2}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+
+        ArcL\On,T1,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\Off,T2,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        home_pos;
+        ArcL\On,T3,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\On,T4,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\Off,T5,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+		
+        !MoveJ T1,v300,fine,tgun\WObj:=weld_table0;
+        !MoveL T2,v300,fine,tgun\WObj:=weld_table0;
+        !home_pos;
+        !MoveJ T3,v300,fine,tgun\WObj:=weld_table0;
+        !MoveJ T4,v300,fine,tgun\WObj:=weld_table0;
+        !MoveJ T5,v300,fine,tgun\WObj:=weld_table0;
+    ENDPROC
+    
+    PROC zero_target(num box{*}, num z, num side_off)
+        VAR robtarget T1;
+        VAR robtarget T2;
+        VAR robtarget T3;
+        VAR robtarget T4;
+
+        !x-axis, y-axis, height, length
+        T1:=[[box{1},box{2}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T2:=[[box{1},box{2}+box{4}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T3:=[[box{1}+box{3},box{2}+box{4}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T4:=[[box{1}+box{3},box{2}+side_off,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+
+        ArcL\On,T1,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\On,T2,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\On,T3,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\On,T4,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+        ArcL\Off,T1,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+		
+        !MoveJ T1,v300,fine,tgun\WObj:=weld_table0;
+        !MoveC T2,T3,v300,fine,tgun\WObj:=weld_table0;
+        !MoveC T4,T1,v300,fine,tgun\WObj:=weld_table0;   
+    ENDPROC
+    
+    PROC home_pos()
+        MoveJ HOME,v1000,fine,tgun\WObj:=weld_table0;
+    ENDPROC
+    
+    PROC starting_pos(num box{*}, num z)
+        VAR robtarget start;
+        
+        start:=[[box{1},box{2},z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        MoveJ start,v300,fine,tgun\WObj:=weld_table0;
+    ENDPROC
+    
+    PROC draw_box(num box{*}, num z)
+        !move to show user bounding box for a character
+        VAR robtarget T1;
+        VAR robtarget T2;
+        VAR robtarget T3;
+        VAR robtarget T4;
+        
+        !x-axis, y-axis, height, length
+        T1:=[[box{1},box{2},z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T2:=[[box{1},box{2}+box{4},z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T3:=[[box{1}+box{3},box{2}+box{4},z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T4:=[[box{1}+box{3},box{2},z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        
+        MoveJ T1,v100,fine,tgun\WObj:=weld_table0;
+        MoveL T2,v100,fine,tgun\WObj:=weld_table0;
+        MoveL T3,v100,fine,tgun\WObj:=weld_table0;
+        MoveL T4,v100,fine,tgun\WObj:=weld_table0;
+        MoveL T1,v100,fine,tgun\WObj:=weld_table0;
+    ENDPROC
+    
+    PROC draw_boxes(num box{*}, num z, num multiply)
+        !move to show user bouding box for all characters
+        VAR robtarget T1;
+        VAR robtarget T2;
+        VAR robtarget T3;
+        VAR robtarget T4;
+		
+        !x-axis, y-axis, height, length
+        T1:=[[box{1},box{2},z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T2:=[[box{1},box{2}+box{4}+multiply,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T3:=[[box{1}+box{3},box{2}+box{4}+multiply,z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T4:=[[box{1}+box{3},box{2},z],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        
+        MoveJ T1,v100,fine,tgun\WObj:=weld_table0;
+        MoveL T2,v100,fine,tgun\WObj:=weld_table0;
+        MoveL T3,v100,fine,tgun\WObj:=weld_table0;
+        MoveL T4,v100,fine,tgun\WObj:=weld_table0;
+        MoveL T1,v100,fine,tgun\WObj:=weld_table0;
+    ENDPROC   
+  
+ENDMODULE
