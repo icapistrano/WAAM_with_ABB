@@ -1,0 +1,155 @@
+%%%
+  VERSION:1
+  LANGUAGE:ENGLISH
+%%%
+
+MODULE Module1
+  ! tgun & weld_table0 is defined in USER system
+  !PERS tooldata tgun:=[TRUE,[[129.774687058,-0.000489462,389.787741907],[0.898849484,0.000001653,0.438257465,0]],[1,[0,0,100],[1,0,0,0],0,0,0]]; 
+  !PERS wobjdata weld_table0:=[FALSE,TRUE,"",[[425.71,-1330.8,231.03],[0,0,0.99999997,-0.000244]],[[0,0,0],[1,0,0,0]]];
+	
+  !WELD PARAMETERS
+  PERS weavedata wv1:=[0,0,0,0,0,0,0,0,0,0,0,0];
+  PERS welddata wd1:=[3,5,0]; !welddata:=[weld_speed, weld_voltage, weld_wirefeed, delay_distance]
+  PERS seamdata sm1:=[0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+
+  CONST robtarget HOME:=[[0,0,-300],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+  
+  !******************************************************************
+  !
+  !Hello World, this programme is to 3D print a circle geometry
+  !Wire should be less than 14mm, or else amend weld_table0 stored in USER system.
+  !This programme is to be used only for 3D printing characters with ARC commands.
+  !The WOBJ is set at the top left corner of the table, thus x-axis is reversed.
+  !Author: Immanuel Capistrano, Steelo 24/07/19
+  !
+  !******************************************************************	
+	
+  PROC main()
+        TPErase; !Removes previous logs
+        move_circle(3); !Experimental value 3mm
+  ENDPROC
+
+  PROC move_circle(num wtip_wsurface)        
+        VAR robtarget C1;
+        VAR robtarget C1_approach;
+        VAR robtarget C2;
+        VAR robtarget C3;
+        VAR robtarget C4;
+        VAR robtarget C_mid;
+
+        VAR num approach;
+        VAR num metal_width;
+        VAR num weld_surface;
+        VAR num C_radius;
+        VAR num x_offset;
+        VAR num y_offset;
+        VAR num no_layers;
+        VAR num direction;
+
+        approach:=300;
+
+        pp_main: !go from here when pp_main is called
+
+        MoveJ HOME,v500,z50,tgun\WObj:=weld_table0; !always go home position first
+
+        TPReadNum reg1,"Enter metal width";
+        metal_width:=reg1;
+
+        start: !go from here when start is called
+
+        TPReadNum reg1, "Enter circle raduis";
+        C_radius:=reg1;
+
+        TPReadNum reg1,"Enter x offset (circle centrepoint)";
+        x_offset:=-reg1;
+
+        TPReadNum reg1,"Enter y offset (circle centrepoint)";
+        y_offset:=reg1;
+
+        C_mid:=[[x_offset,y_offset,-metal_width],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        MoveJ C_mid,v500,fine,tgun\WObj:=weld_table0;
+
+        C1_approach:=[[x_offset-C_radius,y_offset,-metal_width-approach],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        C1:=[[x_offset-C_radius,y_offset,-metal_width],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        C2:=[[x_offset,y_offset-C_radius,-metal_width],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        C3:=[[x_offset+C_radius,y_offset,-metal_width],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        C4:=[[x_offset,y_offset+C_radius,-metal_width],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+
+        TPReadFK reg1,"Satisfied?",stEmpty,stEmpty,stEmpty,"NO","YES";
+        IF reg1 = 4 THEN
+          GOTO start;
+
+        ELSEIF reg1 = 5 THEN
+              dry_run:
+              TPReadFK reg2,"Dry Run?",stEmpty,stEmpty,stEmpty,"NO","YES";
+              IF reg2 = 5 THEN
+                  MoveJ C1_approach,v500,fine,tgun\WObj:=weld_table0;
+                  MoveL C1,v50,fine,tgun\WObj:=weld_table0;
+                  MoveC C2,C3,v50,fine,tgun\WObj:=weld_table0;
+                  MoveC C4,C1,v50,fine,tgun\WObj:=weld_table0;
+                  MoveJ C1_approach,v500,fine,tgun\WObj:=weld_table0;
+                  GOTO dry_run;
+
+              ELSEIF reg2 = 4 THEN
+                  WHILE TRUE DO
+                      Incr no_layers; !increments by 1
+                      direction:=Trunc(no_layers) MOD 2; !0 or 1, used to change welding direction
+
+                      weld_surface:=wtip_wsurface*no_layers;
+
+                      C1:=[[x_offset-C_radius,y_offset,-metal_width-weld_surface],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+                      C2:=[[x_offset,y_offset-C_radius,-metal_width-weld_surface],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+                      C3:=[[x_offset+C_radius,y_offset,-metal_width-weld_surface],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+                      C4:=[[x_offset,y_offset+C_radius,-metal_width-weld_surface],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+
+                      IF direction = 0 THEN
+                          !MoveJ C1_approach,v500,fine,tgun\WObj:=weld_table0;
+                          !MoveL C1,v50,fine,tgun\WObj:=weld_table0;
+                          !MoveC C2,C3,v50,fine,tgun\WObj:=weld_table0;
+                          !MoveC C4,C1,v50,fine,tgun\WObj:=weld_table0;
+                          !MoveJ C1_approach,v500,fine,tgun\WObj:=weld_table0;
+
+                          MoveJ C1_approach,v500,fine,tgun\WObj:=weld_table0;
+                          !Set DOMODE1;
+                          WaitTime 1;
+                          ArcL\On,C1,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+                          !Set DOWELD_START;
+                          ArcC C2,C3,v50,sm1,wd1,wv1,fine,tgun\WObj:=weld_table0;
+                          ArcC C4,C1,v50,sm1,wd1,wv1,fine,tgun\WObj:=weld_table0;
+                          ArcL\Off,C1,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+                          MoveJ C1_approach,v500,fine,tgun\WObj:=weld_table0;
+
+                      ELSEIF direction = 1 THEN
+                          !MoveJ C1_approach,v500,fine,tgun\WObj:=weld_table0;
+                          !MoveL C1,v50,fine,tgun\WObj:=weld_table0;
+                          !MoveC C4,C3,v50,fine,tgun\WObj:=weld_table0;
+                          !MoveC C2,C1,v50,fine,tgun\WObj:=weld_table0;
+                          !MoveJ C1_approach,v500,fine,tgun\WObj:=weld_table0;
+
+                          MoveJ C1_approach,v500,fine,tgun\WObj:=weld_table0;
+                          !Set DOMODE1;
+                          WaitTime 1;
+                          ArcL\On,C1,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+                          !Set DOWELD_START;
+                          ArcC C4,C3,v50,sm1,wd1,wv1,fine,tgun\WObj:=weld_table0;
+                          ArcC C2,C1,v50,sm1,wd1,wv1,fine,tgun\WObj:=weld_table0;
+                          ArcL\Off,C1,v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+                          MoveJ C1_approach,v500,fine,tgun\WObj:=weld_table0;
+                      ENDIF
+
+                      TPReadFK reg1,"Continue",stEmpty,stEmpty,stEmpty,"NO","YES";
+
+                      IF reg1 = 4 THEN
+                        MoveJ HOME,v500,z50,tgun\WObj:=weld_table0; !always go home position first
+                              GOTO pp_main;
+                        Stop;
+                      ELSE
+                        !do nothing
+                      ENDIF
+                  ENDWHILE
+              ENDIF
+          ENDIF
+    ENDPROC
+	
+ENDMODULE
