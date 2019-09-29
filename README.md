@@ -10,7 +10,7 @@ This module was written as part of my KPI's for Steelo LTD.
 4. RobotStudio (Rapid Programming)
 
 # Description
-This repo contains rapid code to 3D print two basic geometric shapes: square and circle in steel. Users have to manually enter parameters to define the size of the shape like radius of the circle, and height and length for the square. 
+This repo contains rapid code to 3D print two basic geometric shapes: square and circle in steel, and weld the the STEELO logo. Users have to manually enter parameters to define the size of the shape like radius of the circle and height and length of the square and the bounding box for each string character.
 
 Once the robot finishes moving through the defined path, the robot moves up by 3mm to repeat the movement. This change in z-axis is experimental which proved successful for building shapes with more than 5cm tall. Time was given for each layer to allow cooling and avoid accumulation of heat stress.
 
