@@ -1,0 +1,177 @@
+%%%
+  VERSION:1
+  LANGUAGE:ENGLISH
+%%%
+
+MODULE square_weld
+    ! tgun & weld_table0 is defined in USER system
+    !PERS tooldata tgun:=[TRUE,[[129.774687058,-0.000489462,389.787741907],[0.898849484,0.000001653,0.438257465,0]],[1,[0,0,100],[1,0,0,0],0,0,0]]; 
+    !PERS wobjdata weld_table0:=[FALSE,TRUE,"",[[1500,-500,340],[0,0,1,0]],[[0,0,0],[1,0,0,0]]];
+	
+    !WELD PARAMETERS
+    PERS weavedata wv1:=[0,0,0,0,0,0,0,0,0,0,0,0];
+    PERS welddata wd1:=[3,5,0]; !welddata:=[weld_speed, weld_voltage, weld_wirefeed, delay_distance]
+    PERS seamdata sm1:=[0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+	
+    CONST robtarget home_target:=[[0,0,-300],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    
+    !******************************************************************
+    !
+    !Hello World, this programme is to 3D print a square geometry
+    !Wire should be less than 14mm, or else amend weld_table0 stored in USER system.
+    !This programme is to be used only for 3D printing characters with ARC commands.
+    !Author: Immanuel Capistrano, Steelo 29/07/19
+    !
+    !******************************************************************
+    
+    PROC main()
+        TPErase; !Removes previous logs
+        square_main(3);
+    ENDPROC
+    
+    PROC square_main(num wtip_wsurface)        
+        VAR num approach:=150;
+        VAR num dimension;
+        VAR num metal_width;
+        VAR num height;
+        VAR num length;
+        VAR num x_offset;
+        VAR num y_offset;
+        VAR num no_layers;
+        VAR num direction;
+        VAR num weld_surface;
+        
+        VAR robtarget targets{5};
+        
+        pp_main: !go to this line when GOTO pp_main is called
+        
+        home_pos; !go home position
+        
+        start: !go to this line when GOTO start is called
+        
+        dimension:=get_dimension("Enter metal width");
+        metal_width:=dimension;
+        
+        dimension:=get_dimension("Enter height of square");
+        height:=dimension;
+        
+        dimension:=get_dimension("Enter length of square");
+        length:=dimension;
+        
+        dimension:=get_dimension("Enter starting BL position in x-axis");
+        x_offset:=dimension;
+        
+        dimension:=get_dimension("Enter starting BL position in y-axis");
+        y_offset:=dimension;
+        
+        square_targets height,length,metal_width,x_offset,y_offset,approach,targets, 0;
+        
+        MoveJ targets{5},v500,fine,tgun\WObj:=weld_table0;
+        MoveL targets{1},v500,fine,tgun\WObj:=weld_table0;
+        
+        TPReadFK reg1,"Satisfied with starting position?",stEmpty,stEmpty,stEmpty,"NO","YES";
+        IF reg1 = 4 THEN
+            GOTO start;
+            
+        ELSEIF reg1 = 5 THEN
+            dry_run:
+            TPReadFK reg2,"Dry Run?",stEmpty,stEmpty,stEmpty,"NO","YES";
+            IF reg2 = 5 THEN
+                MoveJ targets{5},v500,fine,tgun\WObj:=weld_table0;
+                MoveL targets{1},v50,fine,tgun\WObj:=weld_table0;
+                MoveL targets{2},v50,fine,tgun\WObj:=weld_table0;
+                MoveL targets{3},v50,fine,tgun\WObj:=weld_table0;
+                MoveL targets{4},v50,fine,tgun\WObj:=weld_table0;
+                MoveL targets{1},v50,fine,tgun\WObj:=weld_table0;
+                MoveJ targets{5},v500,fine,tgun\WObj:=weld_table0;
+                GOTO dry_run;
+            
+            ELSEIF reg2 = 4 THEN
+                WHILE TRUE DO
+                    Incr no_layers; !increments by 1
+                    direction:=Trunc(no_layers) MOD 2; !0 or 1, used to change welding direction
+
+                    weld_surface:=wtip_wsurface*no_layers;
+
+                    square_targets height,length,metal_width,x_offset,y_offset,approach,targets, weld_surface;
+                    
+                    !alternate direction of ARC Commands
+                    IF direction = 0 THEN
+                        MoveJ targets{5},v500,fine,tgun\WObj:=weld_table0;
+                        ArcL\On,targets{1},v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+                        ArcL\On,targets{2},v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+                        ArcL\On,targets{3},v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+                        ArcL\On,targets{4},v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+                        ArcL\Off,targets{1},v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+                        MoveJ targets{5},v500,fine,tgun\WObj:=weld_table0;
+
+                        !MoveJ targets{5},v500,fine,tgun\WObj:=weld_table0;
+                        !MoveL targets{1},v50,fine,tgun\WObj:=weld_table0;
+                        !MoveL targets{2},v50,fine,tgun\WObj:=weld_table0;
+                        !MoveL targets{3},v50,fine,tgun\WObj:=weld_table0;
+                        !MoveL targets{4},v50,fine,tgun\WObj:=weld_table0;
+                        !MoveL targets{1},v50,fine,tgun\WObj:=weld_table0;
+                        !MoveJ targets{5},v500,fine,tgun\WObj:=weld_table0;
+						
+                    ELSEIF direction = 1 THEN
+
+                        MoveJ targets{5},v500,fine,tgun\WObj:=weld_table0;
+                        ArcL\On,targets{1},v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+                        ArcL\On,targets{4},v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+                        ArcL\On,targets{3},v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+                        ArcL\On,targets{2},v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+                        ArcL\Off,targets{1},v50,sm1,wd1,wv1,fine,tgun\Wobj:=weld_table0;
+                        MoveJ targets{5},v500,fine,tgun\WObj:=weld_table0;
+
+                        !MoveJ targets{5},v500,fine,tgun\WObj:=weld_table0;
+                        !MoveL targets{1},v50,fine,tgun\WObj:=weld_table0;
+                        !MoveL targets{4},v50,fine,tgun\WObj:=weld_table0;
+                        !MoveL targets{3},v50,fine,tgun\WObj:=weld_table0;
+                        !MoveL targets{2},v50,fine,tgun\WObj:=weld_table0;
+                        !MoveL targets{1},v50,fine,tgun\WObj:=weld_table0;
+                        !MoveJ targets{5},v500,fine,tgun\WObj:=weld_table0;
+                    ENDIF
+                    
+                    TPReadFK reg1,"Continue",stEmpty,stEmpty,stEmpty,"NO","YES";
+                    IF reg1 = 4 THEN
+                        home_pos; !always go home position first
+                        GOTO pp_main;
+                        Stop;
+                    ELSE
+                        !do nothing
+                    ENDIF
+                ENDWHILE
+            ENDIF
+        ENDIF
+        
+    ENDPROC
+    
+    PROC square_targets(num height, num length, num width, num x, num y, num approach, INOUT robtarget array{*}, num weld_surface)
+    !4 targets for square corner and a target for approach
+        VAR robtarget T1;
+        VAR robtarget T2;
+        VAR robtarget T3;
+        VAR robtarget T4;
+        VAR robtarget T1_approach;
+
+        T1:=[[x,y,-width-weld_surface],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T2:=[[x+height,y,-width-weld_surface],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T3:=[[x+height,y+length,-width-weld_surface],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T4:=[[x,y+length,-width-weld_surface],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+        T1_approach:=[[x,y,-width-approach],[1,0,0,0],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+
+        array:=[T1,T2,T3,T4,T1_approach];
+    ENDPROC
+
+    
+    FUNC num get_dimension(string one)
+        !Returns integer
+        TPReadNum reg1, one;
+        RETURN reg1;
+    ENDFUNC
+    
+    PROC home_pos()
+        !Go home position
+        MoveJ home_target,v500,fine,tgun\WObj:=weld_table0; !always go home position first
+    ENDPROC
+ENDMODULE
